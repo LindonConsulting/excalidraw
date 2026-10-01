@@ -425,6 +425,8 @@ import {
 } from "../viewport";
 import { ElementCanvasButtons } from "../components/ElementCanvasButtons";
 import { LaserTrails } from "../laserTrails";
+
+import type { LaserPointerPathPayload } from "../laserTrails";
 import { withBatchedUpdates, withBatchedUpdatesThrottled } from "../reactUtils";
 import { isPointHittingTextAutoResizeHandle } from "../textAutoResizeHandle";
 import { textWysiwyg } from "../wysiwyg/textWysiwyg";
@@ -537,6 +539,7 @@ type ExcalidrawZImperativeAPI = ExcalidrawImperativeAPI & {
     ) => Promise<{
       elementCount: number;
     }>;
+    applyRemoteLaserPath: (payload: LaserPointerPathPayload) => void;
   };
 };
 
@@ -889,6 +892,8 @@ class App extends React.Component<AppProps, AppState> {
       // Kept out of the public ExcalidrawImperativeAPI surface.
       _excalidrawZ: {
         applyFileScene: this.applyExcalidrawZFileScene,
+        applyRemoteLaserPath: (payload) =>
+          this.laserTrails.applyRemotePath(payload),
       },
     };
     return api;

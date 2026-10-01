@@ -54,7 +54,9 @@ export const sendMessage = ({ event, data }) => {
     return false;
   }
 
-  console.info("sendMessage", { event, data });
+  if (event !== "laserPointerPath") {
+    console.info("sendMessage", { event, data });
+  }
   try {
     messageHandler.postMessage({
       event,
