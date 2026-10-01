@@ -34,6 +34,13 @@ import {
 import { mermaidToElements, insertFromMermaid } from "./mermaid";
 import { createMathImage, insertMathImage, updateMathImage } from "./math";
 import {
+  setInlineLatexEnabled,
+  getInlineLatexEnabled,
+  startInlineMathTracking,
+  replaceTextWithMathImage,
+  restoreInlineMathText,
+} from "./inlineMath";
+import {
   createElements,
   insertFromSkeleton,
   createShape,
@@ -563,6 +570,7 @@ export const notifyHelperReady = () => {
     return;
   }
   _helperReadyFired = true;
+  startInlineMathTracking();
   sendMessage({ event: "onload" });
 
   // Suppress macOS UI sound on first focus shortly after load
@@ -638,6 +646,13 @@ window.excalidrawZHelper = {
   createMathImage,
   insertMathImage,
   updateMathImage,
+
+  // Inline LaTeX
+  setInlineLatexEnabled,
+  getInlineLatexEnabled,
+  startInlineMathTracking,
+  replaceTextWithMathImage,
+  restoreInlineMathText,
 
   // Element creators
   createElements,

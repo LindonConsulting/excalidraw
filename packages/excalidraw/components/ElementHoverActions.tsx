@@ -1,6 +1,9 @@
 import React from "react";
 
-import { POINTER_EVENTS, sceneCoordsToViewportCoords } from "@excalidraw/common";
+import {
+  POINTER_EVENTS,
+  sceneCoordsToViewportCoords,
+} from "@excalidraw/common";
 import {
   getElementAbsoluteCoords,
   getExcalidrawZMathData,
@@ -9,12 +12,9 @@ import {
   isImageElement,
 } from "@excalidraw/element";
 
-import { pencilIcon } from "./icons";
+import { pencilIcon, TextIcon } from "./icons";
 
-import type {
-  AppState,
-  BinaryFiles,
-} from "@excalidraw/excalidraw/types";
+import type { AppState, BinaryFiles } from "@excalidraw/excalidraw/types";
 import type {
   ExcalidrawElement,
   ExcalidrawImageElement,
@@ -76,6 +76,16 @@ const getElementHoverActions = ({
       icon: pencilIcon,
       onSelect: () => requestMathImageEdit(element, files),
     });
+    if (typeof getExcalidrawZMathData(element)?.inlineSource === "string") {
+      actions.push({
+        key: "edit-math-as-text",
+        label: "Edit as text",
+        icon: TextIcon,
+        onSelect: () => {
+          window.excalidrawZHelper?.restoreInlineMathText?.(element.id);
+        },
+      });
+    }
   }
 
   return actions;
