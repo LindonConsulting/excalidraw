@@ -609,9 +609,15 @@ export const applyRemoteLaserPath = (payload) => {
   window.excalidrawZHelper?._api?._excalidrawZ?.applyRemoteLaserPath?.(payload);
 };
 
+/** The laser shortcut key was released (hold-to-laser). */
+export const releaseLaserHold = () => {
+  window.excalidrawZHelper?._api?._excalidrawZ?.releaseLaserHold?.();
+};
+
 window.excalidrawZHelper = {
   sendMessage,
   applyRemoteLaserPath,
+  releaseLaserHold,
 
   loadFileBuffer,
   loadFileString,
