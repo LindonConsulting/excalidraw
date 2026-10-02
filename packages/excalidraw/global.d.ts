@@ -71,6 +71,7 @@ interface Window {
   excalidrawZHelper?: {
     sendMessage: (payload: { event: string; data?: any }) => void;
     currentFileId?: string;
+    restoreInlineMathText?: (elementId: string) => { elementId: string } | null;
     loadFileBuffer: (
       buffer: number[] | ArrayBuffer | Uint8Array,
       fileId: string,

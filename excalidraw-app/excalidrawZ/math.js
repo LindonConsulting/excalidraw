@@ -54,7 +54,10 @@ const parseViewBox = (svg) => {
     return null;
   }
 
-  const parts = match[1].trim().split(/[\s,]+/).map(Number);
+  const parts = match[1]
+    .trim()
+    .split(/[\s,]+/)
+    .map(Number);
   if (
     parts.length !== 4 ||
     !parts.every((part) => Number.isFinite(part)) ||
@@ -244,6 +247,19 @@ export const insertMathImage = (params, opts = {}) => {
   };
 };
 
+// Keep `inlineSource` (see inlineMath.js) in sync when the formula is edited
+// through the native sheet, so "Edit as text" shows the new LaTeX.
+const inlineSourceUpdate = (element, latex) => {
+  const mathData = element.customData?.excalidrawZ;
+  if (typeof mathData?.inlineSource !== "string" || typeof latex !== "string") {
+    return {};
+  }
+  const [open = "$", close = "$"] = Array.isArray(mathData.inlineDelimiters)
+    ? mathData.inlineDelimiters
+    : [];
+  return { inlineSource: `${open}${latex.trim()}${close}` };
+};
+
 /**
  * Replace the rendered SVG for an existing math image element.
  *
@@ -284,6 +300,10 @@ export const updateMathImage = (elementId, params = {}, opts = {}) => {
     customData: {
       ...element.customData,
       ...updateParams.customData,
+    },
+    mathData: {
+      ...updateParams.mathData,
+      ...inlineSourceUpdate(element, updateParams.latex),
     },
   });
   const nextElement = created.elements[0];
