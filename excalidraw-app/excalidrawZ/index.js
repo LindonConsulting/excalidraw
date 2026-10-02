@@ -600,8 +600,24 @@ document.addEventListener(
   true,
 );
 
+/**
+ * Draw a laser stroke relayed from another editor (e.g. the Viewer window
+ * mirroring the presenter's laser). Payload: `{ phase, points }` as sent in
+ * the `laserPointerPath` message, points in scene coordinates.
+ */
+export const applyRemoteLaserPath = (payload) => {
+  window.excalidrawZHelper?._api?._excalidrawZ?.applyRemoteLaserPath?.(payload);
+};
+
+/** The laser shortcut key was released (hold-to-laser). */
+export const releaseLaserHold = () => {
+  window.excalidrawZHelper?._api?._excalidrawZ?.releaseLaserHold?.();
+};
+
 window.excalidrawZHelper = {
   sendMessage,
+  applyRemoteLaserPath,
+  releaseLaserHold,
 
   loadFileBuffer,
   loadFileString,

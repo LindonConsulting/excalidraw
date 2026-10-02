@@ -69,6 +69,12 @@ export const toggleToolbarAction = (key) => {
 
   // Tool switching — direct setActiveTool, no DOM clicks or synthetic events
   const toolType = KEY_TO_TOOL_TYPE[key];
+  if (toolType === "laser" && api?._excalidrawZ?.beginLaserHold) {
+    // Hold-to-laser: releasing the key (see `releaseLaserHold`) restores
+    // the previous tool unless this was a quick tap.
+    api._excalidrawZ.beginLaserHold();
+    return;
+  }
   if (toolType && api?.setActiveTool) {
     api.setActiveTool({ type: toolType });
     return;

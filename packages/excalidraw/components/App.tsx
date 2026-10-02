@@ -425,6 +425,8 @@ import {
 } from "../viewport";
 import { ElementCanvasButtons } from "../components/ElementCanvasButtons";
 import { LaserTrails } from "../laserTrails";
+
+import type { LaserPointerPathPayload } from "../laserTrails";
 import { withBatchedUpdates, withBatchedUpdatesThrottled } from "../reactUtils";
 import { isPointHittingTextAutoResizeHandle } from "../textAutoResizeHandle";
 import { textWysiwyg } from "../wysiwyg/textWysiwyg";
@@ -482,6 +484,11 @@ import { AppStateObserver, type OnStateChange } from "./AppStateObserver";
 
 import { findShapeByKey, TOGGLE_TOOLS } from "./Tools";
 
+// [ExcalidrawZ] Holding the laser shortcut longer than this (or drawing while
+// it is held) makes the laser temporary: releasing the key restores the
+// previous tool.
+const LASER_HOLD_MS = 300;
+
 import UnlockPopup from "./UnlockPopup";
 
 import type { ExcalidrawLibraryIds } from "../data/types";
@@ -537,6 +544,9 @@ type ExcalidrawZImperativeAPI = ExcalidrawImperativeAPI & {
     ) => Promise<{
       elementCount: number;
     }>;
+    applyRemoteLaserPath: (payload: LaserPointerPathPayload) => void;
+    beginLaserHold: () => void;
+    releaseLaserHold: () => void;
   };
 };
 
@@ -786,6 +796,16 @@ class App extends React.Component<AppProps, AppState> {
 
   drawShape = new AppDrawShape(this);
   laserTrails = new LaserTrails(this);
+  // [ExcalidrawZ] Hold-to-laser: set while the laser shortcut key is held
+  // after activating the laser so releasing it restores the previous tool.
+  // A quick tap (no stroke, released within LASER_HOLD_MS) keeps the laser
+  // active like a normal toggle.
+  private laserHold: {
+    previousTool: AppState["activeTool"];
+    startedAt: number;
+    drew: boolean;
+    releasePending: boolean;
+  } | null = null;
   eraserTrail = new EraserTrail(this);
   lassoTrail = new LassoTrail(this);
   cursorHints = new CursorHints(this);
@@ -889,6 +909,10 @@ class App extends React.Component<AppProps, AppState> {
       // Kept out of the public ExcalidrawImperativeAPI surface.
       _excalidrawZ: {
         applyFileScene: this.applyExcalidrawZFileScene,
+        applyRemoteLaserPath: (payload) =>
+          this.laserTrails.applyRemotePath(payload),
+        beginLaserHold: this.beginLaserHold,
+        releaseLaserHold: this.releaseLaserHold,
       },
     };
     return api;
@@ -6043,6 +6067,11 @@ class App extends React.Component<AppProps, AppState> {
           return;
         }
 
+        if (shape === "laser" && event.repeat) {
+          // holding the key must not toggle the laser off again
+          return;
+        }
+
         if (shape) {
           if (this.state.activeTool.type !== shape) {
             trackEvent(
@@ -6083,6 +6112,8 @@ class App extends React.Component<AppProps, AppState> {
             this.setActiveTool({
               type: this.state.preferredSelectionTool.type,
             });
+          } else if (shape === "laser") {
+            this.beginLaserHold();
           } else {
             this.setActiveTool({ type: shape }, { toggle: true });
           }
@@ -6324,9 +6355,63 @@ class App extends React.Component<AppProps, AppState> {
     },
   );
 
+  /**
+   * [ExcalidrawZ] Activate the laser from its shortcut key and remember the
+   * previous tool so releasing the key can restore it (see `laserHold`).
+   */
+  beginLaserHold = () => {
+    if (this.state.activeTool.type === "laser") {
+      return;
+    }
+    const previousTool = this.state.activeTool;
+    this.setActiveTool({ type: "laser" });
+    this.laserHold = {
+      previousTool,
+      startedAt: performance.now(),
+      drew: false,
+      releasePending: false,
+    };
+  };
+
+  /** [ExcalidrawZ] The laser shortcut key was released. */
+  releaseLaserHold = () => {
+    const hold = this.laserHold;
+    if (!hold) {
+      return;
+    }
+    const wasHeld =
+      hold.drew || performance.now() - hold.startedAt > LASER_HOLD_MS;
+    if (!wasHeld) {
+      // quick tap: the laser stays active, like the regular shortcut
+      this.laserHold = null;
+    } else if (this.laserTrails.localTrail.hasCurrentTrail) {
+      // mid-stroke: restore the previous tool once the pointer is released
+      hold.releasePending = true;
+    } else {
+      this.endLaserHold();
+    }
+  };
+
+  private endLaserHold() {
+    const hold = this.laserHold;
+    this.laserHold = null;
+    if (!hold || this.state.activeTool.type !== "laser") {
+      return;
+    }
+    const previous = hold.previousTool;
+    this.setActiveTool(
+      previous.type === "custom"
+        ? { type: "custom", customType: previous.customType! }
+        : { type: previous.type },
+    );
+  }
+
   private onKeyUp = withBatchedUpdates((event: KeyboardEvent) => {
     if (!this.isInteractionEnabled()) {
       return;
+    }
+    if (event.key.toLowerCase() === KEYS.K) {
+      this.releaseLaserHold();
     }
     if (event.key === KEYS.SPACE) {
       if (
@@ -9380,6 +9465,9 @@ class App extends React.Component<AppProps, AppState> {
         this.state.activeTool.type,
       );
     } else if (this.state.activeTool.type === "laser") {
+      if (this.laserHold) {
+        this.laserHold.drew = true;
+      }
       this.laserTrails.startPath(
         pointerDownState.lastCoords.x,
         pointerDownState.lastCoords.y,
@@ -12845,6 +12933,9 @@ class App extends React.Component<AppProps, AppState> {
 
       if (activeTool.type === "laser") {
         this.laserTrails.endPath();
+        if (this.laserHold?.releasePending) {
+          this.endLaserHold();
+        }
         return;
       }
 
